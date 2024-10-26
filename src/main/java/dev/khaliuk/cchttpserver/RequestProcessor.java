@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.List;
 
 @Singleton
 public class RequestProcessor {
@@ -47,6 +48,23 @@ public class RequestProcessor {
             return "HTTP/1.1 200 OK\r\n\r\n";
         }
 
+        if (requestTarget.equals("/user-agent")) {
+            var userAgentHeader = headers.stream()
+                .filter(h -> h.toLowerCase().startsWith("user-agent"))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("User-Agent header is not found"));
+
+            var headerValue = userAgentHeader.substring(11).trim();
+            return responseSerializer.serialize(
+                HttpResponse.builder()
+                    .statusLine(StatusLine.builder().status(HttpStatus.OK).build())
+                    .headers(List.of(
+                        "Content-Type: text/plain",
+                        "Content-Length: " + headerValue.length()))
+                    .responseBody(headerValue)
+                    .build());
+        }
+
         if (!requestTarget.startsWith("/echo")) {
             return "HTTP/1.1 404 Not Found\r\n\r\n";
         }
@@ -58,10 +76,10 @@ public class RequestProcessor {
         responseHeaders.add("Content-Length: " + pathVariable.length());
 
         var httpResponse = HttpResponse.builder()
-                .statusLine(StatusLine.builder().status(HttpStatus.OK).build())
-                .headers(responseHeaders)
-                .responseBody(pathVariable)
-                .build();
+            .statusLine(StatusLine.builder().status(HttpStatus.OK).build())
+            .headers(responseHeaders)
+            .responseBody(pathVariable)
+            .build();
 
         return responseSerializer.serialize(httpResponse);
     }
