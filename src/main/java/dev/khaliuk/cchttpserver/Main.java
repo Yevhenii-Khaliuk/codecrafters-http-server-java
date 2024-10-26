@@ -1,14 +1,15 @@
 package dev.khaliuk.cchttpserver;
 
+import io.avaje.inject.BeanScope;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 
 public class Main {
     public static void main(String[] args) {
-        // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
 
-        try {
+        try (var beanScope = BeanScope.builder().build()) {
             ServerSocket serverSocket = new ServerSocket(4221);
 
             // Since the tester restarts your program quite often, setting SO_REUSEADDR
@@ -18,7 +19,11 @@ public class Main {
             var clientSocket = serverSocket.accept(); // Wait for connection from client.
             System.out.println("accepted new connection");
 
-            clientSocket.getOutputStream().write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
+            var requestProcessor = beanScope.get(RequestProcessor.class);
+            var response = requestProcessor.process(clientSocket.getInputStream());
+            System.out.println("Processed response: " + response);
+
+            clientSocket.getOutputStream().write(response.getBytes());
 
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
