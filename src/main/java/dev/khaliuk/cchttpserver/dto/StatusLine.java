@@ -3,6 +3,14 @@ package dev.khaliuk.cchttpserver.dto;
 import dev.khaliuk.cchttpserver.Constants;
 
 public record StatusLine(String protocolVersion, HttpStatus status) {
+    public static StatusLine ok() {
+        return new StatusLine(Constants.PROTOCOL_VERSION, HttpStatus.OK);
+    }
+
+    public static StatusLine notFound() {
+        return new StatusLine(Constants.PROTOCOL_VERSION, HttpStatus.NOT_FOUND);
+    }
+
     public static StatusLineBuilder builder() {
         return new StatusLineBuilder();
     }

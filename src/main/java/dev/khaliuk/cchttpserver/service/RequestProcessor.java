@@ -1,7 +1,7 @@
 package dev.khaliuk.cchttpserver.service;
 
+import dev.khaliuk.cchttpserver.ApplicationArguments;
 import dev.khaliuk.cchttpserver.dto.HttpResponse;
-import dev.khaliuk.cchttpserver.dto.HttpStatus;
 import dev.khaliuk.cchttpserver.dto.StatusLine;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -9,16 +9,20 @@ import jakarta.inject.Singleton;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 @Singleton
 public class RequestProcessor {
     private final ResponseSerializer responseSerializer;
+    private final ApplicationArguments applicationArguments;
 
     @Inject
-    public RequestProcessor(ResponseSerializer responseSerializer) {
+    public RequestProcessor(ResponseSerializer responseSerializer, ApplicationArguments applicationArguments) {
         this.responseSerializer = responseSerializer;
+        this.applicationArguments = applicationArguments;
     }
 
     public String process(InputStream inputStream) throws IOException {
@@ -60,7 +64,7 @@ public class RequestProcessor {
             var headerValue = userAgentHeader.substring(11).trim();
             return responseSerializer.serialize(
                 HttpResponse.builder()
-                    .statusLine(StatusLine.builder().status(HttpStatus.OK).build())
+                    .statusLine(StatusLine.ok())
                     .headers(List.of(
                         "Content-Type: text/plain",
                         "Content-Length: " + headerValue.length()))
@@ -68,23 +72,44 @@ public class RequestProcessor {
                     .build());
         }
 
-        if (!requestTarget.startsWith("/echo")) {
-            return "HTTP/1.1 404 Not Found\r\n\r\n";
+        if (requestTarget.startsWith("/echo")) {
+            var pathVariable = requestTarget.substring(6); // "/echo/{var}"
+
+            var responseHeaders = new ArrayList<String>();
+            responseHeaders.add("Content-Type: text/plain");
+            responseHeaders.add("Content-Length: " + pathVariable.length());
+
+            var httpResponse = HttpResponse.builder()
+                .statusLine(StatusLine.ok())
+                .headers(responseHeaders)
+                .responseBody(pathVariable)
+                .build();
+
+            return responseSerializer.serialize(httpResponse);
         }
 
-        var pathVariable = requestTarget.substring(6); // "/echo/{var}"
+        if (requestTarget.startsWith("/files")) {
+            var fileName = requestTarget.substring(7);
+            var filePath = Paths.get(applicationArguments.getFileDirectoryName(), fileName);
 
-        var responseHeaders = new ArrayList<String>();
-        responseHeaders.add("Content-Type: text/plain");
-        responseHeaders.add("Content-Length: " + pathVariable.length());
+            if (Files.exists(filePath)) {
+                var fileContent = Files.readString(filePath);
 
-        var httpResponse = HttpResponse.builder()
-            .statusLine(StatusLine.builder().status(HttpStatus.OK).build())
-            .headers(responseHeaders)
-            .responseBody(pathVariable)
-            .build();
+                var responseHeaders = new ArrayList<String>();
+                responseHeaders.add("Content-Type: application/octet-stream");
+                responseHeaders.add("Content-Length: " + fileContent.length());
 
-        return responseSerializer.serialize(httpResponse);
+                var httpResponse = HttpResponse.builder()
+                    .statusLine(StatusLine.ok())
+                    .headers(responseHeaders)
+                    .responseBody(fileContent)
+                    .build();
+
+                return responseSerializer.serialize(httpResponse);
+            }
+        }
+
+        return "HTTP/1.1 404 Not Found\r\n\r\n";
     }
 
     private String readUntilDelimiter(InputStream inputStream) throws IOException {
