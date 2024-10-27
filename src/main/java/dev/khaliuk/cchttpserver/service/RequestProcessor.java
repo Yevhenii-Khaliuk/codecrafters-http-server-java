@@ -1,6 +1,7 @@
 package dev.khaliuk.cchttpserver.service;
 
 import dev.khaliuk.cchttpserver.ApplicationArguments;
+import dev.khaliuk.cchttpserver.dto.HttpMethod;
 import dev.khaliuk.cchttpserver.dto.HttpResponse;
 import dev.khaliuk.cchttpserver.dto.StatusLine;
 import jakarta.inject.Inject;
@@ -38,11 +39,6 @@ public class RequestProcessor {
             headers.add(header);
             header = readUntilDelimiter(inputStream);
         }
-
-        // 3. Optional request body
-//        System.out.println("Waiting for request body");
-//        var requestBody = inputStream.readAllBytes();
-//        System.out.println("Request body received");
 
         var requestLineTokens = requestLine.split(" ");
         if (requestLineTokens.length != 3) {
@@ -89,23 +85,41 @@ public class RequestProcessor {
         }
 
         if (requestTarget.startsWith("/files")) {
+            var method = HttpMethod.valueOf(requestLineTokens[0]);
+
             var fileName = requestTarget.substring(7);
             var filePath = Paths.get(applicationArguments.getFileDirectoryName(), fileName);
 
-            if (Files.exists(filePath)) {
-                var fileContent = Files.readString(filePath);
+            if (method == HttpMethod.GET) {
 
-                var responseHeaders = new ArrayList<String>();
-                responseHeaders.add("Content-Type: application/octet-stream");
-                responseHeaders.add("Content-Length: " + fileContent.length());
+                if (Files.exists(filePath)) {
+                    var fileContent = Files.readString(filePath);
 
-                var httpResponse = HttpResponse.builder()
-                    .statusLine(StatusLine.ok())
-                    .headers(responseHeaders)
-                    .responseBody(fileContent)
-                    .build();
+                    var responseHeaders = new ArrayList<String>();
+                    responseHeaders.add("Content-Type: application/octet-stream");
+                    responseHeaders.add("Content-Length: " + fileContent.length());
 
-                return responseSerializer.serialize(httpResponse);
+                    var httpResponse = HttpResponse.builder()
+                        .statusLine(StatusLine.ok())
+                        .headers(responseHeaders)
+                        .responseBody(fileContent)
+                        .build();
+
+                    return responseSerializer.serialize(httpResponse);
+                }
+            } else if (method == HttpMethod.POST) {
+                var contentLength = Integer.parseInt(headers.stream()
+                    .filter(h -> h.toLowerCase().startsWith("content-length"))
+                    .findFirst()
+                    .orElseThrow(() ->
+                        new IllegalArgumentException("Content-Length header should be present for HTTP method POST"))
+                    .substring(15)
+                    .trim());
+
+                var requestBody = inputStream.readNBytes(contentLength);
+                Files.write(filePath, requestBody);
+
+                return "HTTP/1.1 201 Created\r\n\r\n";
             }
         }
 
