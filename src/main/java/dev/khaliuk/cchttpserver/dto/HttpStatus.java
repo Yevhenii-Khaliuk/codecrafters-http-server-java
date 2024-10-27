@@ -1,4 +1,4 @@
-package dev.khaliuk.cchttpserver;
+package dev.khaliuk.cchttpserver.dto;
 
 public enum HttpStatus {
     OK(200, "OK"),

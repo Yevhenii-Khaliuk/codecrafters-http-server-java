@@ -1,5 +1,6 @@
-package dev.khaliuk.cchttpserver;
+package dev.khaliuk.cchttpserver.service;
 
+import dev.khaliuk.cchttpserver.dto.HttpResponse;
 import jakarta.inject.Singleton;
 
 import static dev.khaliuk.cchttpserver.Constants.CRLF;

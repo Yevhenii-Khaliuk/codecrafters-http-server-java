@@ -1,5 +1,8 @@
-package dev.khaliuk.cchttpserver;
+package dev.khaliuk.cchttpserver.service;
 
+import dev.khaliuk.cchttpserver.dto.HttpResponse;
+import dev.khaliuk.cchttpserver.dto.HttpStatus;
+import dev.khaliuk.cchttpserver.dto.StatusLine;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 

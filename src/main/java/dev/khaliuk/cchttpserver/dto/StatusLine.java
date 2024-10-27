@@ -1,4 +1,6 @@
-package dev.khaliuk.cchttpserver;
+package dev.khaliuk.cchttpserver.dto;
+
+import dev.khaliuk.cchttpserver.Constants;
 
 public record StatusLine(String protocolVersion, HttpStatus status) {
     public static StatusLineBuilder builder() {
