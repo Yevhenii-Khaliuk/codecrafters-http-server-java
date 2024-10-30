@@ -16,7 +16,7 @@ public class HeadersProcessor {
 
     private void processAcceptEncoding(String header, HttpResponse httpResponse) {
         var value = header.substring(header.indexOf(':') + 1).trim();
-        if ("gzip".equalsIgnoreCase(value)) {
+        if (value.toLowerCase().contains("gzip")) {
             httpResponse.addHeader("Content-Encoding: gzip");
         }
     }
