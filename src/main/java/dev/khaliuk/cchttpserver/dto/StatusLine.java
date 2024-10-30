@@ -11,12 +11,12 @@ public record StatusLine(String protocolVersion, HttpStatus status) {
         return new StatusLine(Constants.PROTOCOL_VERSION, HttpStatus.NOT_FOUND);
     }
 
-    public static StatusLineBuilder builder() {
-        return new StatusLineBuilder();
-    }
-
     public String toString() {
         return "%s %s %s".formatted(protocolVersion, status.getCode(), status.getReason());
+    }
+
+    public static StatusLineBuilder builder() {
+        return new StatusLineBuilder();
     }
 
     public static class StatusLineBuilder {

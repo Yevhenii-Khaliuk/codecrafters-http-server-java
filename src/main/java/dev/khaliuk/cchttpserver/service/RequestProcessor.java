@@ -1,29 +1,31 @@
 package dev.khaliuk.cchttpserver.service;
 
-import dev.khaliuk.cchttpserver.ApplicationArguments;
 import dev.khaliuk.cchttpserver.dto.HttpMethod;
+import dev.khaliuk.cchttpserver.dto.HttpRequest;
 import dev.khaliuk.cchttpserver.dto.HttpResponse;
-import dev.khaliuk.cchttpserver.dto.StatusLine;
+import dev.khaliuk.cchttpserver.dto.RequestLine;
+import dev.khaliuk.cchttpserver.handler.TargetHandlerFactory;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.List;
 
 @Singleton
 public class RequestProcessor {
+    private final HeadersProcessor headersProcessor;
+    private final TargetHandlerFactory targetHandlerFactory;
     private final ResponseSerializer responseSerializer;
-    private final ApplicationArguments applicationArguments;
 
     @Inject
-    public RequestProcessor(ResponseSerializer responseSerializer, ApplicationArguments applicationArguments) {
+    public RequestProcessor(HeadersProcessor headersProcessor,
+                            TargetHandlerFactory targetHandlerFactory,
+                            ResponseSerializer responseSerializer) {
+        this.headersProcessor = headersProcessor;
+        this.targetHandlerFactory = targetHandlerFactory;
         this.responseSerializer = responseSerializer;
-        this.applicationArguments = applicationArguments;
     }
 
     public String process(InputStream inputStream) throws IOException {
@@ -34,7 +36,7 @@ public class RequestProcessor {
         // 2. Headers
         var headers = new ArrayList<String>();
         var header = readUntilDelimiter(inputStream);
-        while (!header.equals("")) {
+        while (!header.isEmpty()) {
             System.out.println("Got header: " + header);
             headers.add(header);
             header = readUntilDelimiter(inputStream);
@@ -45,85 +47,23 @@ public class RequestProcessor {
             throw new IllegalArgumentException("Invalid request line: " + requestLine);
         }
 
-        var requestTarget = requestLineTokens[1];
+        var requestTarget = requestLineTokens[1].trim();
+        var httpRequest = HttpRequest.builder()
+            .requestLine(RequestLine.builder()
+                .httpMethod(HttpMethod.valueOf(requestLineTokens[0].trim()))
+                .target(requestLineTokens[1].trim())
+                .protocolVersion(requestLineTokens[2].trim())
+                .build())
+            .headers(headers)
+            .inputStream(inputStream)
+            .build();
+        var httpResponse = HttpResponse.builder()
+            .headers(new ArrayList<>())
+            .build();
 
-        if (requestTarget.equals("/")) {
-            return "HTTP/1.1 200 OK\r\n\r\n";
-        }
-
-        if (requestTarget.equals("/user-agent")) {
-            var userAgentHeader = headers.stream()
-                .filter(h -> h.toLowerCase().startsWith("user-agent"))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("User-Agent header is not found"));
-
-            var headerValue = userAgentHeader.substring(11).trim();
-            return responseSerializer.serialize(
-                HttpResponse.builder()
-                    .statusLine(StatusLine.ok())
-                    .headers(List.of(
-                        "Content-Type: text/plain",
-                        "Content-Length: " + headerValue.length()))
-                    .responseBody(headerValue)
-                    .build());
-        }
-
-        if (requestTarget.startsWith("/echo")) {
-            var pathVariable = requestTarget.substring(6); // "/echo/{var}"
-
-            var responseHeaders = new ArrayList<String>();
-            responseHeaders.add("Content-Type: text/plain");
-            responseHeaders.add("Content-Length: " + pathVariable.length());
-
-            var httpResponse = HttpResponse.builder()
-                .statusLine(StatusLine.ok())
-                .headers(responseHeaders)
-                .responseBody(pathVariable)
-                .build();
-
-            return responseSerializer.serialize(httpResponse);
-        }
-
-        if (requestTarget.startsWith("/files")) {
-            var method = HttpMethod.valueOf(requestLineTokens[0]);
-
-            var fileName = requestTarget.substring(7);
-            var filePath = Paths.get(applicationArguments.getFileDirectoryName(), fileName);
-
-            if (method == HttpMethod.GET) {
-
-                if (Files.exists(filePath)) {
-                    var fileContent = Files.readString(filePath);
-
-                    var responseHeaders = new ArrayList<String>();
-                    responseHeaders.add("Content-Type: application/octet-stream");
-                    responseHeaders.add("Content-Length: " + fileContent.length());
-
-                    var httpResponse = HttpResponse.builder()
-                        .statusLine(StatusLine.ok())
-                        .headers(responseHeaders)
-                        .responseBody(fileContent)
-                        .build();
-
-                    return responseSerializer.serialize(httpResponse);
-                }
-            } else if (method == HttpMethod.POST) {
-                var contentLength = Integer.parseInt(headers.stream()
-                    .filter(h -> h.toLowerCase().startsWith("content-length"))
-                    .findFirst()
-                    .orElseThrow(() ->
-                        new IllegalArgumentException("Content-Length header should be present for HTTP method POST"))
-                    .substring(15)
-                    .trim());
-
-                var requestBody = inputStream.readNBytes(contentLength);
-                Files.write(filePath, requestBody);
-
-                return "HTTP/1.1 201 Created\r\n\r\n";
-            }
-        }
-
-        return "HTTP/1.1 404 Not Found\r\n\r\n";
+        headersProcessor.process(httpRequest.headers(), httpResponse);
+        targetHandlerFactory.getHandler(requestTarget).process(httpRequest, httpResponse);
+        return responseSerializer.serialize(httpResponse);
     }
 
     private String readUntilDelimiter(InputStream inputStream) throws IOException {
