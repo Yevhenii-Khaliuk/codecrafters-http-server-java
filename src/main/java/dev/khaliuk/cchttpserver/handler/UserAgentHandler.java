@@ -19,7 +19,6 @@ public class UserAgentHandler implements TargetHandler {
         var headerValue = userAgentHeader.substring(11).trim();
         httpResponse.setStatusLine(StatusLine.ok());
         httpResponse.addHeader("Content-Type: text/plain");
-        httpResponse.addHeader("Content-Length: " + headerValue.length());
-        httpResponse.setResponseBody(headerValue);
+        httpResponse.setResponseBody(headerValue.getBytes());
     }
 }

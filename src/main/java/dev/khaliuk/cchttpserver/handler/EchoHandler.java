@@ -15,7 +15,6 @@ public class EchoHandler implements TargetHandler {
 
         httpResponse.setStatusLine(StatusLine.ok());
         httpResponse.addHeader("Content-Type: text/plain");
-        httpResponse.addHeader("Content-Length: " + pathVariable.length());
-        httpResponse.setResponseBody(pathVariable);
+        httpResponse.setResponseBody(pathVariable.getBytes());
     }
 }

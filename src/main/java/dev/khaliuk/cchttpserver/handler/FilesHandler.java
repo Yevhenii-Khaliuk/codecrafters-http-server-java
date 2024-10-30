@@ -40,11 +40,10 @@ public class FilesHandler implements TargetHandler {
 
     private void handleGetMethod(Path filePath, HttpResponse httpResponse) throws IOException {
         if (Files.exists(filePath)) {
-            var fileContent = Files.readString(filePath);
+            var fileContent = Files.readAllBytes(filePath);
 
             httpResponse.setStatusLine(StatusLine.ok());
             httpResponse.addHeader("Content-Type: application/octet-stream");
-            httpResponse.addHeader("Content-Length: " + fileContent.length());
             httpResponse.setResponseBody(fileContent);
         } else {
             httpResponse.setStatusLine(StatusLine.notFound());

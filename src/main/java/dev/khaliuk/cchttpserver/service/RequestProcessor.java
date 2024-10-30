@@ -28,7 +28,7 @@ public class RequestProcessor {
         this.responseSerializer = responseSerializer;
     }
 
-    public String process(InputStream inputStream) throws IOException {
+    public byte[] process(InputStream inputStream) throws IOException {
         // 1. Request line
         var requestLine = readUntilDelimiter(inputStream);
         System.out.println("Got request line: " + requestLine);
@@ -61,8 +61,8 @@ public class RequestProcessor {
             .headers(new ArrayList<>())
             .build();
 
-        headersProcessor.process(httpRequest.headers(), httpResponse);
         targetHandlerFactory.getHandler(requestTarget).process(httpRequest, httpResponse);
+        headersProcessor.postProcess(headers, httpResponse);
         return responseSerializer.serialize(httpResponse);
     }
 

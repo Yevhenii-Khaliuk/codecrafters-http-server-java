@@ -1,14 +1,13 @@
 package dev.khaliuk.cchttpserver.dto;
 
 import java.util.List;
-import java.util.Objects;
 
 public final class HttpResponse {
     private StatusLine statusLine;
     private final List<String> headers;
-    private String responseBody;
+    private byte[] responseBody;
 
-    public HttpResponse(StatusLine statusLine, List<String> headers, String responseBody) {
+    public HttpResponse(StatusLine statusLine, List<String> headers, byte[] responseBody) {
         this.statusLine = statusLine;
         this.headers = headers;
         this.responseBody = responseBody;
@@ -26,7 +25,7 @@ public final class HttpResponse {
         return headers;
     }
 
-    public String responseBody() {
+    public byte[] responseBody() {
         return responseBody;
     }
 
@@ -38,38 +37,14 @@ public final class HttpResponse {
         headers.add(header);
     }
 
-    public void setResponseBody(String responseBody) {
+    public void setResponseBody(byte[] responseBody) {
         this.responseBody = responseBody;
     }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (HttpResponse) obj;
-        return Objects.equals(this.statusLine, that.statusLine) &&
-            Objects.equals(this.headers, that.headers) &&
-            Objects.equals(this.responseBody, that.responseBody);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(statusLine, headers, responseBody);
-    }
-
-    @Override
-    public String toString() {
-        return "HttpResponse[" +
-            "statusLine=" + statusLine + ", " +
-            "headers=" + headers + ", " +
-            "responseBody=" + responseBody + ']';
-    }
-
 
     public static class HttpResponseBuilder {
         private StatusLine statusLine;
         private List<String> headers;
-        private String responseBody;
+        private byte[] responseBody;
 
         public HttpResponseBuilder statusLine(StatusLine statusLine) {
             this.statusLine = statusLine;
@@ -81,7 +56,7 @@ public final class HttpResponse {
             return this;
         }
 
-        public HttpResponseBuilder responseBody(String responseBody) {
+        public HttpResponseBuilder responseBody(byte[] responseBody) {
             this.responseBody = responseBody;
             return this;
         }

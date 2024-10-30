@@ -18,9 +18,7 @@ public class ConnectionHandler {
     public void handle(Socket clientSocket) {
         try {
             var response = requestProcessor.process(clientSocket.getInputStream());
-            System.out.println("Processed response: " + response);
-
-            clientSocket.getOutputStream().write(response.getBytes());
+            clientSocket.getOutputStream().write(response);
         } catch (IOException e) {
             System.out.println("Error during request processing: " + e.getMessage());
             throw new RuntimeException(e);
