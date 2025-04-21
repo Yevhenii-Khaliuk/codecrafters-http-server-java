@@ -12,16 +12,32 @@ import java.util.zip.GZIPOutputStream;
 
 @Singleton
 public class HeadersProcessor {
-    public void postProcess(List<String> requestHeaders, HttpResponse httpResponse) {
-        requestHeaders.stream()
-            .filter(header -> header.toLowerCase().startsWith("accept-encoding"))
-            .findFirst()
-            .ifPresentOrElse(
-                header -> processAcceptEncoding(header, httpResponse),
-                () -> populateContentLength(httpResponse));
+    public boolean postProcessAndReturnConnectionCloseStatus(List<String> requestHeaders, HttpResponse httpResponse) {
+        String acceptEncodingHeader = null;
+        String connectionHeader = null;
+
+        for (var header : requestHeaders) {
+            if (header.toLowerCase().startsWith("accept-encoding")) {
+                acceptEncodingHeader = header;
+            } else if (header.toLowerCase().startsWith("connection")) {
+                connectionHeader = header;
+            }
+        }
+
+        if (acceptEncodingHeader != null) {
+            processAcceptEncoding(acceptEncodingHeader, httpResponse);
+        } else {
+            populateContentLength(httpResponse);
+        }
+
+        if (connectionHeader != null) {
+            return processConnectionHeader(connectionHeader, httpResponse);
+        }
+
+        return false;
     }
 
-    private void processAcceptEncoding(String header, HttpResponse httpResponse) {
+    private static void processAcceptEncoding(String header, HttpResponse httpResponse) {
         var value = header.substring(header.indexOf(':') + 1).trim();
         if (value.toLowerCase().contains("gzip")) {
             httpResponse.addHeader("Content-Encoding: gzip");
@@ -47,5 +63,11 @@ public class HeadersProcessor {
         if (httpResponse.responseBody() != null) {
             httpResponse.addHeader("Content-Length: " + httpResponse.responseBody().length);
         }
+    }
+
+    private static boolean processConnectionHeader(String header, HttpResponse httpResponse) {
+        var value = header.substring(header.indexOf(':') + 1).trim();
+        httpResponse.addHeader("Connection: " + value);
+        return value.equalsIgnoreCase("close");
     }
 }

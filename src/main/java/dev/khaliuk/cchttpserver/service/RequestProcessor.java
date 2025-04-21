@@ -4,6 +4,7 @@ import dev.khaliuk.cchttpserver.dto.HttpMethod;
 import dev.khaliuk.cchttpserver.dto.HttpRequest;
 import dev.khaliuk.cchttpserver.dto.HttpResponse;
 import dev.khaliuk.cchttpserver.dto.RequestLine;
+import dev.khaliuk.cchttpserver.dto.ResponseWrapper;
 import dev.khaliuk.cchttpserver.handler.TargetHandlerFactory;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -28,7 +29,7 @@ public class RequestProcessor {
         this.responseSerializer = responseSerializer;
     }
 
-    public byte[] process(InputStream inputStream) throws IOException {
+    public ResponseWrapper process(InputStream inputStream) throws IOException {
         // 1. Request line
         var requestLine = readUntilDelimiter(inputStream);
         System.out.println("Got request line: " + requestLine);
@@ -62,8 +63,9 @@ public class RequestProcessor {
             .build();
 
         targetHandlerFactory.getHandler(requestTarget).process(httpRequest, httpResponse);
-        headersProcessor.postProcess(headers, httpResponse);
-        return responseSerializer.serialize(httpResponse);
+        var isConnectionClose = headersProcessor.postProcessAndReturnConnectionCloseStatus(headers, httpResponse);
+        var responseData = responseSerializer.serialize(httpResponse);
+        return new ResponseWrapper(responseData, isConnectionClose);
     }
 
     private String readUntilDelimiter(InputStream inputStream) throws IOException {

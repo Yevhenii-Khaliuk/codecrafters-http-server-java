@@ -1,6 +1,5 @@
 package dev.khaliuk.cchttpserver.service;
 
-import dev.khaliuk.cchttpserver.exception.ConnectionCloseException;
 import io.avaje.inject.Prototype;
 import jakarta.inject.Inject;
 
@@ -20,13 +19,16 @@ public class ConnectionHandler {
         try {
             while (true) {
                 var response = requestProcessor.process(clientSocket.getInputStream());
-                clientSocket.getOutputStream().write(response);
+                clientSocket.getOutputStream().write(response.data());
+                if (response.isConnectionClose()) {
+                    System.out.println("Closing connection");
+                    clientSocket.close();
+                    break;
+                }
             }
         } catch (IOException e) {
             System.out.println("Error during request processing: " + e.getMessage());
             throw new RuntimeException(e);
-        } catch (ConnectionCloseException e) {
-            System.out.println("Connection close header received, connection closed.");
         }
     }
 }
